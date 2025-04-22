@@ -10,9 +10,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.*;
 
 /**
@@ -20,7 +17,7 @@ import java.util.*;
  *
  * @see ServiceLoader
  */
-@SuppressWarnings({"removal", "unused"})
+@SuppressWarnings({"unused"})
 public class GuiceServiceLoader<S> implements Iterable<S> {
 
     private static final String PREFIX = "META-INF/services/";
@@ -38,11 +35,6 @@ public class GuiceServiceLoader<S> implements Iterable<S> {
      * The class loader used to locate, load, and instantiate providers
      */
     private final ClassLoader loader;
-
-    /**
-     * The access control context taken when the ServiceLoader is created
-     */
-    private final AccessControlContext acc;
 
     /**
      * Cached providers, in instantiation order
@@ -74,7 +66,6 @@ public class GuiceServiceLoader<S> implements Iterable<S> {
         this.injector = Objects.requireNonNull(injector, "Injector cannot be null.");
         service = Objects.requireNonNull(svc, "Service interface cannot be null");
         loader = (cl == null) ? ClassLoader.getSystemClassLoader() : cl;
-        acc = (System.getSecurityManager() != null) ? AccessController.getContext() : null;
         reload();
     }
 
@@ -222,19 +213,11 @@ public class GuiceServiceLoader<S> implements Iterable<S> {
         }
 
         public boolean hasNext() {
-            if (acc == null) {
-                return hasNextService();
-            } else {
-                return AccessController.doPrivileged((PrivilegedAction<Boolean>) this::hasNextService, acc);
-            }
+            return hasNextService();
         }
 
         public S next() {
-            if (acc == null) {
-                return nextService();
-            } else {
-                return AccessController.doPrivileged((PrivilegedAction<S>) this::nextService, acc);
-            }
+            return nextService();
         }
 
         public void remove() {

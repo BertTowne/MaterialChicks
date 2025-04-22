@@ -10,12 +10,12 @@ import org.bukkit.entity.Chicken;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.util.Collections;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 @SuppressWarnings("UnstableApiUsage")
 public class MaterialChicksBootstrapper implements PluginBootstrap {
@@ -23,22 +23,27 @@ public class MaterialChicksBootstrapper implements PluginBootstrap {
     @Override
     @SuppressWarnings("PatternValidation")
     public void bootstrap(@NotNull BootstrapContext context) {
-        Path chickensFolder;
         try {
-            chickensFolder = Paths.get(Objects.requireNonNull(MaterialChicks.class.getClassLoader().getResource("pack/assets/materialchicks/models/item")).toURI());
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
+            String pathString = "/pack/assets/materialchicks/models/item";
+            URI uri = Objects.requireNonNull(MaterialChicks.class.getResource(pathString)).toURI();
 
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(chickensFolder, "*.json")) {
-            for (Path filePath : stream) {
-                String chickenName = filePath.getFileName().toString().replace(".json", "");
+            try (FileSystem fs = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
+                // This is to ensure the file system is created and available
+                Path chickensFolder = fs.getPath(pathString);
 
-                context.getLifecycleManager().registerEventHandler(RegistryEvents.CHICKEN_VARIANT.freeze(), event ->
-                        event.registry().register(TypedKey.create(RegistryKey.CHICKEN_VARIANT, Key.key("materialchicks", chickenName)),
+                try (Stream<Path> walk = Files.walk(chickensFolder, 1)) {
+                    walk.forEach(filePath -> {
+                        String chickenName = filePath.getFileName().toString().replace(".json", "");
+
+                        context.getLifecycleManager().registerEventHandler(RegistryEvents.CHICKEN_VARIANT.freeze(), event ->
+                            event.registry().register(TypedKey.create(RegistryKey.CHICKEN_VARIANT, Key.key("materialchicks", chickenName)),
                                 builder -> builder.model(Chicken.Variant.Model.NORMAL).assetId(Key.key("materialchicks:entity/chicken/" + chickenName))));
+                    });
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
-        } catch (IOException e) {
+        } catch (FileSystemAlreadyExistsException | IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
     }
