@@ -1,0 +1,7 @@
+{
+  "parent": "materialchicks:item/diamond_chicken",
+  "textures": {
+    "0": "materialchicks:item/gold_chicken",
+    "particle": "materialchicks:item/gold_chicken"
+  }
+}
